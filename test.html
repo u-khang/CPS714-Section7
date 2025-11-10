@@ -58,9 +58,31 @@
         ${event.description || ''}<br>
         ${new Date(event.start_time).toLocaleString()} 
         ${event.end_time ? '- ' + new Date(event.end_time).toLocaleString() : ''}
+        <br>
+        <button onclick="deleteEvent(${event.id})">🗑️ Delete</button>
       `;
       container.appendChild(eventDiv);
       });
+    }
+
+    // Function to Delete Events
+    async function deleteEvent(id){
+      if(!confirm('Are you sure you want to delete this event?'))
+        return;
+      
+      console.log('Deleting event with ID:', id);
+      const { error } = await supabaseClient
+        .from('events')
+        .delete()
+        .eq('id', id);
+
+      if(error){
+        alert('Error deleting the event: ' + error.message);
+      }
+      else{
+        alert('Event has been deleted');
+        loadEvents(); 
+      }
     }
 
   loadEvents();
