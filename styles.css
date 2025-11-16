@@ -187,8 +187,67 @@ footer {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
+/* start of console.html style */
+.console-container {
+  max-width: 1100px;
+  margin: 2rem auto;
+  padding: 1rem;
+}
 
-/* Responsive Design */
+.controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+table.users {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+table.users th,
+table.users td {
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid #eef2f7;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+table.users th {
+  background: #f4f7ff;
+  color: #2d5be3;
+  font-weight: 600;
+}
+
+.small-muted {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.status {
+  font-size: 0.9rem;
+}
+
+.btn {
+  background: #2d5be3;
+  color: #fff;
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn.secondary {
+  background: #f3f4f6;
+  color: #111827;
+}
+
 @media (max-width: 700px) {
     main {
         padding: 0 0.5rem;

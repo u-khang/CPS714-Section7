@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Admin Console — CampusConnect</title>
+    <link rel="stylesheet" href="styles.css" />
+    <!-- Supabase-->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="scripts.js" defer></script>
+    <script src="adminScripts.js" defer></script>
+</head>
+<body class="profile-page">
+  <header>
+    <h1>CampusConnect</h1>
+    <nav>
+      <ul>
+        <li><a href="index.html">Discover Events</a></li>
+        <li><a href="index.html">My Events</a></li>
+        <li><a href="create.html" id="createEventsLink">Create Events</a></li>
+        <li><a href="index.html">Analytics</a></li>
+      </ul>
+    </nav>
+    <div id="userInfo"></div>
+  </header>
+
+  <main class="console-container">
+    <section>
+      <h2>User Management</h2>
+      <p class="small-muted">View all users and update their role.</p>
+
+      <div class="controls">
+        <button id="refreshBtn" class="btn">Refresh</button>
+        <button id="reloadPage" class="btn secondary">Reload Page</button>
+        <div id="consoleMsg" class="small-muted" style="margin-left:auto"></div>
+      </div>
+
+      <div id="usersWrapper">
+        <table class="users" id="usersTable" aria-live="polite">
+          <thead>
+            <tr>
+              <th style="width:6%">ID</th>
+              <th style="width:28%">Name</th>
+              <th style="width:30%">Email</th>
+              <th style="width:20%">Role</th>
+              <th style="width:16%">Status</th>
+            </tr>
+          </thead>
+          <tbody id="usersTbody">
+            <tr><td colspan="5" class="small-muted">Users Loading</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 CampusConnect. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>
