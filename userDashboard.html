@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Dashboard - CampusConnect</title>
+  <link rel="stylesheet" href="userDashboard.css">
+</head>
+<body>
+  <div id="mainContent">
+    <header>
+      <h1>CampusConnect</h1>
+      <nav>
+        <ul>
+          <li><a href="index.html">Discover Events</a></li>
+          <li><a href="userDashboard.html">My Dashboard</a></li>
+          <li><a href="userDashboard.html">My Events</a></li>
+          <li><a href="create.html" id="createEventsLink">Create Events</a></li>
+          <li><a href="index.html">Analytics</a></li>
+          <li><a href="registerClub.html">Register as a Club Organizer!</a></li>
+        </ul>
+      </nav>
+      <div id="userInfo"></div>
+    </header>
+
+    <main>
+      <section id="userProfile">
+        <h2>My Dashboard</h2>
+        <div id="userDetails">
+          <!-- User information will be populated here -->
+        </div>
+      </section>
+
+      <section id="myEvents">
+        <h2>My Events</h2>
+        <div id="eventsTabs">
+          <button class="tab-button active" data-tab="rsvpd">RSVP'd Events</button>
+          <button class="tab-button" data-tab="interested">Interested</button>
+          <button class="tab-button" data-tab="attended">Attended</button>
+        </div>
+        <div id="rsvpdEvents" class="events-tab-content active">
+          <!-- RSVP'd events will be displayed here -->
+        </div>
+        <div id="interestedEvents" class="events-tab-content">
+          <!-- Interested events will be displayed here -->
+        </div>
+        <div id="attendedEvents" class="events-tab-content">
+          <!-- Attended events will be displayed here -->
+        </div>
+      </section>
+
+      <section id="eventRecommendations">
+        <h2>Event Recommendations</h2>
+        <p class="section-description">Events suggested based on your interests and past attendance</p>
+        <div id="recommendedEvents">
+          <!-- Recommended events will be displayed here -->
+        </div>
+      </section>
+
+      <section id="achievementsPoints">
+        <h2>Achievements & Points</h2>
+        <div id="pointsDisplay">
+          <!-- Points summary will be displayed here -->
+        </div>
+        <div id="achievementsList">
+          <!-- Achievements will be displayed here -->
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; 2025 CampusConnect. All rights reserved.</p>
+    </footer>
+  </div>
+</body>
+</html>
+
