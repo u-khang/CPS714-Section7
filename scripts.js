@@ -90,11 +90,14 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 console.log("Supabase object:", supabaseClient);
 
+// Table name - can be easily switched between "team4_users" and "users"
+const USERS_TABLE = "users";
+
 // Check if the user exists in the database
 async function checkIfUserExists(email) {
     try {
         const { data, error } = await supabaseClient
-            .from("users")
+            .from(USERS_TABLE)
             .select("*")
             .eq("email", email)
             .maybeSingle();
@@ -120,9 +123,15 @@ async function checkIfUserExists(email) {
 // Create a new user record in the users table
 async function createUserInDB(firstName, lastName, email, role) {
     try {
+        // Column names match the schema: "firstName", "lastName", email, role
         const { data, error } = await supabaseClient
-            .from("users")
-            .insert([{firstName, lastName, email, role }])
+            .from(USERS_TABLE)
+            .insert([{
+                "firstName": firstName, 
+                "lastName": lastName, 
+                email: email, 
+                role: role 
+            }])
             .select()
             .maybeSingle();
 
