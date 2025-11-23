@@ -6,8 +6,8 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Table names
 const USERS_TABLE = "users";
-// const EVENTS_TABLE = "team4_events";
-// const RSVPS_TABLE = "team4_rsvps";
+const EVENTS_TABLE = "team4_events";
+const RSVPS_TABLE = "team4_rsvps";
 
 // Fetch user's firstName from database using email
 async function fetchUserFirstName(email) {
@@ -75,6 +75,107 @@ async function displayUserFirstName() {
     }
 }
 
+// Fetch user's RSVPs with event information
+async function fetchUserRSVPs(userEmail) {
+    try {
+        // First, fetch all RSVPs for the user
+        const { data: rsvps, error: rsvpError } = await supabaseClient
+            .from(RSVPS_TABLE)
+            .select("id, status, event_id")
+            .eq("user_email", userEmail);
+
+        if (rsvpError) {
+            console.error("Error fetching user RSVPs:", rsvpError);
+            return [];
+        }
+
+        if (!rsvps || rsvps.length === 0) {
+            return [];
+        }
+
+        // Get unique event IDs
+        const eventIds = [...new Set(rsvps.map(r => r.event_id).filter(id => id !== null))];
+
+        if (eventIds.length === 0) {
+            return rsvps.map(r => ({ ...r, event: null }));
+        }
+
+        // Fetch event details
+        const { data: events, error: eventsError } = await supabaseClient
+            .from(EVENTS_TABLE)
+            .select("id, title")
+            .in("id", eventIds);
+
+        if (eventsError) {
+            console.error("Error fetching events:", eventsError);
+            // Return RSVPs without event details
+            return rsvps.map(r => ({ ...r, event: null }));
+        }
+
+        // Create a map of event_id to event
+        const eventMap = {};
+        if (events) {
+            events.forEach(event => {
+                eventMap[event.id] = event;
+            });
+        }
+
+        // Combine RSVPs with event information
+        return rsvps.map(rsvp => ({
+            ...rsvp,
+            event: eventMap[rsvp.event_id] || null
+        }));
+
+    } catch (err) {
+        console.error("Unexpected error fetching RSVPs:", err);
+        return [];
+    }
+}
+
+// Display RSVPs in the table
+function displayRSVPsInTable(rsvps) {
+    const tableBody = document.getElementById("eventsTableBody");
+    if (!tableBody) return;
+
+    if (rsvps.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="2">No events found.</td></tr>';
+        return;
+    }
+
+    let html = '';
+    rsvps.forEach(rsvp => {
+        const eventTitle = rsvp.event?.title || 'Unknown Event';
+        const status = rsvp.status || 'unknown';
+        html += `
+            <tr>
+                <td>${eventTitle}</td>
+                <td>${status}</td>
+            </tr>
+        `;
+    });
+
+    tableBody.innerHTML = html;
+}
+
+// Load and display user's RSVPs
+async function loadUserRSVPs() {
+    // Check for session first
+    if (!checkSession()) {
+        return;
+    }
+
+    // Get user email from sessionStorage
+    const userDataStr = sessionStorage.getItem("userData");
+    const userData = JSON.parse(userDataStr);
+    const userEmail = userData.email;
+
+    // Fetch RSVPs
+    const rsvps = await fetchUserRSVPs(userEmail);
+    
+    // Display RSVPs in table
+    displayRSVPsInTable(rsvps);
+}
+
 // Initialize on page load
 window.addEventListener("DOMContentLoaded", () => {
     // Ensure mainContent is visible (in case it was hidden)
@@ -85,6 +186,8 @@ window.addEventListener("DOMContentLoaded", () => {
     
     // Check session and display user data
     displayUserFirstName();
+    
+    // Load and display user's RSVPs
+    loadUserRSVPs();
 });
-
 

@@ -38,19 +38,18 @@
 
       <section id="myEvents">
         <h2>My Events</h2>
-        <div id="eventsTabs">
-          <button class="tab-button active" data-tab="rsvpd">RSVP'd Events</button>
-          <button class="tab-button" data-tab="interested">Interested</button>
-          <button class="tab-button" data-tab="attended">Attended</button>
-        </div>
-        <div id="rsvpdEvents" class="events-tab-content active">
-          <!-- RSVP'd events will be displayed here -->
-        </div>
-        <div id="interestedEvents" class="events-tab-content">
-          <!-- Interested events will be displayed here -->
-        </div>
-        <div id="attendedEvents" class="events-tab-content">
-          <!-- Attended events will be displayed here -->
+        <div id="eventsTableContainer">
+          <table id="eventsTable">
+            <thead>
+              <tr>
+                <th>Event Name</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="eventsTableBody">
+              <!-- RSVPs will be displayed here -->
+            </tbody>
+          </table>
         </div>
       </section>
 
