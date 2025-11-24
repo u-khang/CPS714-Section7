@@ -238,6 +238,27 @@ footer {
     gap: 1rem;
 }
 
+.redeem-button {
+    background: #2d5be3;
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.redeem-button:hover:not(:disabled) {
+    background: #1741a6;
+}
+
+.redeem-button:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
 .event-card {
     background: #f9f9f9;
     border: 1px solid #ddd;

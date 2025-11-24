@@ -34,6 +34,31 @@ async function fetchUserFirstName(email) {
     }
 }
 
+// Fetch user's role from database using email
+async function fetchUserRole(email) {
+    try {
+        const { data, error } = await supabaseClient
+            .from(USERS_TABLE)
+            .select("role")
+            .eq("email", email)
+            .maybeSingle();
+
+        if (error) {
+            console.error("Error fetching user role:", error);
+            return null;
+        }
+
+        if (data) {
+            return data.role || "Student";
+        }
+
+        return "Student";
+    } catch (err) {
+        console.error("Unexpected error fetching role:", err);
+        return "Student";
+    }
+}
+
 // Check if user has an active session
 function checkSession() {
     const credential = sessionStorage.getItem("credential");
@@ -49,7 +74,7 @@ function checkSession() {
     return true;
 }
 
-// Display user's firstName on the dashboard
+// Display user's firstName, role, and event points on the dashboard
 async function displayUserFirstName() {
     // Check for session first
     if (!checkSession()) {
@@ -61,14 +86,18 @@ async function displayUserFirstName() {
     const userData = JSON.parse(userDataStr);
     const userEmail = userData.email;
 
-    // Fetch firstName from database
-    const firstName = await fetchUserFirstName(userEmail);
+    // Fetch firstName, role, and event points from database
+    const [firstName, role, eventPoints] = await Promise.all([
+        fetchUserFirstName(userEmail),
+        fetchUserRole(userEmail),
+        fetchUserEventPoints(userEmail)
+    ]);
 
     // Display in userDetails div
     const userDetailsDiv = document.getElementById("userDetails");
     if (userDetailsDiv) {
         if (firstName) {
-            userDetailsDiv.innerHTML = `<p><strong>Name:</strong> ${firstName}</p>`;
+            userDetailsDiv.innerHTML = `<p><strong>User Name:</strong> ${firstName} | <strong>Role:</strong> ${role} | <strong>Total Event Points:</strong> ${eventPoints}</p>`;
         } else {
             userDetailsDiv.innerHTML = `<p>Unable to load user information.</p>`;
         }
@@ -81,7 +110,7 @@ async function fetchUserRSVPs(userEmail) {
         // First, fetch all RSVPs for the user
         const { data: rsvps, error: rsvpError } = await supabaseClient
             .from(RSVPS_TABLE)
-            .select("id, status, event_id")
+            .select("id, status, event_id, point_claimed")
             .eq("user_email", userEmail);
 
         if (rsvpError) {
@@ -373,7 +402,276 @@ window.addEventListener("DOMContentLoaded", () => {
     
     // Load and display recommended events
     loadRecommendedEvents();
+    
+    // Load and display points and attended RSVPs
+    loadPointsAndAttendedRSVPs();
 });
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ACHIEVEMENTS AND POINTS FUNCTIONS
+
+// Fetch user's event_point
+async function fetchUserEventPoints(userEmail) {
+    try {
+        const { data, error } = await supabaseClient
+            .from(USERS_TABLE)
+            .select("event_point")
+            .eq("email", userEmail)
+            .maybeSingle();
+
+        if (error) {
+            console.error("Error fetching user event points:", error);
+            return 0;
+        }
+
+        return data?.event_point || 0;
+    } catch (err) {
+        console.error("Unexpected error fetching event points:", err);
+        return 0;
+    }
+}
+
+// Fetch attended RSVPs with event information
+async function fetchAttendedRSVPs(userEmail) {
+    try {
+        // Fetch RSVPs with status "attended"
+        const { data: rsvps, error: rsvpError } = await supabaseClient
+            .from(RSVPS_TABLE)
+            .select("id, status, event_id, point_claimed")
+            .eq("user_email", userEmail)
+            .eq("status", "attended");
+
+        if (rsvpError) {
+            console.error("Error fetching attended RSVPs:", rsvpError);
+            return [];
+        }
+
+        if (!rsvps || rsvps.length === 0) {
+            return [];
+        }
+
+        // Get unique event IDs
+        const eventIds = [...new Set(rsvps.map(r => r.event_id).filter(id => id !== null))];
+
+        if (eventIds.length === 0) {
+            return rsvps.map(r => ({ ...r, event: null }));
+        }
+
+        // Fetch event details
+        const { data: events, error: eventsError } = await supabaseClient
+            .from(EVENTS_TABLE)
+            .select("id, title")
+            .in("id", eventIds);
+
+        if (eventsError) {
+            console.error("Error fetching events for attended RSVPs:", eventsError);
+            return rsvps.map(r => ({ ...r, event: null }));
+        }
+
+        // Create a map of event_id to event
+        const eventMap = {};
+        if (events) {
+            events.forEach(event => {
+                eventMap[event.id] = event;
+            });
+        }
+
+        // Combine RSVPs with event information
+        return rsvps.map(rsvp => ({
+            ...rsvp,
+            event: eventMap[rsvp.event_id] || null
+        }));
+
+    } catch (err) {
+        console.error("Unexpected error fetching attended RSVPs:", err);
+        return [];
+    }
+}
+
+// Display points and attended RSVPs
+function displayPointsAndAttendedRSVPs(eventPoints, attendedRSVPs) {
+    const achievementsList = document.getElementById("achievementsList");
+
+    if (!achievementsList) return;
+
+    // Display attended RSVPs
+    if (attendedRSVPs.length === 0) {
+        achievementsList.innerHTML = '<p>No attended events yet. Attend events to earn points!</p>';
+        return;
+    }
+
+    let html = '';
+    attendedRSVPs.forEach(rsvp => {
+        const eventTitle = rsvp.event?.title || 'Unknown Event';
+        const pointClaimed = rsvp.point_claimed === true;
+        const canRedeem = !pointClaimed;
+
+        html += `
+            <div class="achievement-item">
+                <div style="flex: 1;">
+                    <strong>${eventTitle}</strong>
+                    <p style="margin-top: 0.5rem; color: #6b7280; font-size: 0.9rem;">
+                        ${pointClaimed ? 'Points already redeemed' : 'Earn 10 points for attending this event'}
+                    </p>
+                </div>
+                <button 
+                    class="redeem-button" 
+                    data-rsvp-id="${rsvp.id}"
+                    ${canRedeem ? '' : 'disabled'}
+                >
+                    ${pointClaimed ? 'Redeemed' : 'Redeem 10 Points'}
+                </button>
+            </div>
+        `;
+    });
+
+    achievementsList.innerHTML = html;
+
+    // Add event listeners to redeem buttons
+    document.querySelectorAll('.redeem-button:not([disabled])').forEach(button => {
+        button.addEventListener('click', async () => {
+            const rsvpId = button.getAttribute('data-rsvp-id');
+            await redeemPoints(rsvpId);
+        });
+    });
+}
+
+// Redeem points for an RSVP
+async function redeemPoints(rsvpId) {
+    // Check for session first
+    if (!checkSession()) {
+        return;
+    }
+
+    // Get user email from sessionStorage
+    const userDataStr = sessionStorage.getItem("userData");
+    const userData = JSON.parse(userDataStr);
+    const userEmail = userData.email;
+
+    // Convert rsvpId to number if it's a string
+    const rsvpIdNum = typeof rsvpId === 'string' ? parseInt(rsvpId, 10) : rsvpId;
+
+    try {
+        // First, verify the RSVP belongs to the user and point_claimed is false
+        const { data: rsvp, error: rsvpError } = await supabaseClient
+            .from(RSVPS_TABLE)
+            .select("id, point_claimed, user_email")
+            .eq("id", rsvpIdNum)
+            .eq("user_email", userEmail)
+            .maybeSingle();
+
+        if (rsvpError) {
+            console.error("Error fetching RSVP:", rsvpError);
+            alert("Error: Could not verify RSVP. Please try again.");
+            return;
+        }
+
+        if (!rsvp) {
+            alert("Error: RSVP not found.");
+            return;
+        }
+
+        // Check if points are already claimed (handle null as false)
+        if (rsvp.point_claimed === true) {
+            alert("Points for this event have already been redeemed.");
+            return;
+        }
+
+        // Get current event_point
+        const { data: userData, error: userError } = await supabaseClient
+            .from(USERS_TABLE)
+            .select("event_point")
+            .eq("email", userEmail)
+            .maybeSingle();
+
+        if (userError) {
+            console.error("Error fetching user data:", userError);
+            alert("Error: Could not fetch user data. Please try again.");
+            return;
+        }
+
+        const currentPoints = userData?.event_point || 0;
+        const newPoints = currentPoints + 10;
+
+        // Update event_point and point_claimed in a transaction-like manner
+        // First update the user's event_point
+        const { error: updateUserError } = await supabaseClient
+            .from(USERS_TABLE)
+            .update({ event_point: newPoints })
+            .eq("email", userEmail);
+
+        if (updateUserError) {
+            console.error("Error updating user points:", updateUserError);
+            alert("Error: Could not update points. Please try again.");
+            return;
+        }
+
+        // Then update the RSVP's point_claimed
+        const { data: updateData, error: updateRsvpError } = await supabaseClient
+            .from(RSVPS_TABLE)
+            .update({ point_claimed: true })
+            .eq("id", rsvpIdNum)
+            .select();
+
+        if (updateRsvpError) {
+            console.error("Error updating RSVP:", updateRsvpError);
+            // Try to rollback the points update
+            await supabaseClient
+                .from(USERS_TABLE)
+                .update({ event_point: currentPoints })
+                .eq("email", userEmail);
+            alert("Error: Could not update RSVP. Please try again.");
+            return;
+        }
+
+        // Check if the update actually affected any rows
+        if (!updateData || updateData.length === 0) {
+            console.error("No rows were updated for RSVP:", rsvpIdNum);
+            // Try to rollback the points update
+            await supabaseClient
+                .from(USERS_TABLE)
+                .update({ event_point: currentPoints })
+                .eq("email", userEmail);
+            alert("Error: Could not update RSVP. Please try again.");
+            return;
+        }
+
+        console.log("Successfully updated RSVP:", updateData);
+
+        // Success! Reload the points and attended RSVPs, and update user name display with new points
+        await Promise.all([
+            loadPointsAndAttendedRSVPs(),
+            displayUserFirstName()
+        ]);
+        alert("Successfully redeemed points!");
+
+    } catch (err) {
+        console.error("Unexpected error redeeming points:", err);
+        alert("An unexpected error occurred. Please try again.");
+    }
+}
+
+// Load and display points and attended RSVPs
+async function loadPointsAndAttendedRSVPs() {
+    // Check for session first
+    if (!checkSession()) {
+        return;
+    }
+
+    // Get user email from sessionStorage
+    const userDataStr = sessionStorage.getItem("userData");
+    const userData = JSON.parse(userDataStr);
+    const userEmail = userData.email;
+
+    // Fetch points and attended RSVPs
+    const [eventPoints, attendedRSVPs] = await Promise.all([
+        fetchUserEventPoints(userEmail),
+        fetchAttendedRSVPs(userEmail)
+    ]);
+
+    // Display points and attended RSVPs
+    displayPointsAndAttendedRSVPs(eventPoints, attendedRSVPs);
+}
 
 
 
