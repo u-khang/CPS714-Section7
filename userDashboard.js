@@ -129,10 +129,10 @@ async function fetchUserRSVPs(userEmail) {
             return rsvps.map(r => ({ ...r, event: null }));
         }
 
-        // Fetch event details
+        // Fetch event details including hosting organization
         const { data: events, error: eventsError } = await supabaseClient
             .from(EVENTS_TABLE)
-            .select("id, title")
+            .select("id, title, \"hosting organization\"")
             .in("id", eventIds);
 
         if (eventsError) {
@@ -167,17 +167,19 @@ function displayRSVPsInTable(rsvps) {
     if (!tableBody) return;
 
     if (rsvps.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="2">No events found.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="3">No events found.</td></tr>';
         return;
     }
 
     let html = '';
     rsvps.forEach(rsvp => {
         const eventTitle = rsvp.event?.title || 'Unknown Event';
+        const organization = rsvp.event?.["hosting organization"] || 'Unknown Organization';
         const status = rsvp.status || 'unknown';
         html += `
             <tr>
                 <td>${eventTitle}</td>
+                <td>${organization}</td>
                 <td>${status}</td>
             </tr>
         `;
