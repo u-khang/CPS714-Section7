@@ -176,7 +176,188 @@ async function loadUserRSVPs() {
     displayRSVPsInTable(rsvps);
 }
 
-// Initialize on page load
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// EVENT RECOMMENDATIONS FUNCTIONS
+// Fetch user's interested/attended events to get preferences
+async function fetchUserInterestedOrAttendedEvents(userEmail) {
+    try {
+        // Fetch RSVPs with status "interested" or "attended"
+        const { data: rsvps, error: rsvpError } = await supabaseClient
+            .from(RSVPS_TABLE)
+            .select("event_id")
+            .eq("user_email", userEmail)
+            .in("status", ["interested", "attended"]);
+
+        if (rsvpError) {
+            console.error("Error fetching user interested/attended RSVPs:", rsvpError);
+            return [];
+        }
+
+        if (!rsvps || rsvps.length === 0) {
+            return [];
+        }
+
+        // Get unique event IDs
+        const eventIds = [...new Set(rsvps.map(r => r.event_id).filter(id => id !== null))];
+
+        if (eventIds.length === 0) {
+            return [];
+        }
+
+        // Fetch event details including organization and category
+        const { data: events, error: eventsError } = await supabaseClient
+            .from(EVENTS_TABLE)
+            .select("id, \"hosting organization\", category")
+            .in("id", eventIds);
+
+        if (eventsError) {
+            console.error("Error fetching events for recommendations:", eventsError);
+            return [];
+        }
+
+        return events || [];
+    } catch (err) {
+        console.error("Unexpected error fetching user preferences:", err);
+        return [];
+    }
+}
+
+// Fetch recommended events based on user's interests
+async function fetchRecommendedEvents(userEmail) {
+    try {
+        // Get user's interested/attended events to extract preferences
+        const userEvents = await fetchUserInterestedOrAttendedEvents(userEmail);
+
+        if (userEvents.length === 0) {
+            // No preferences yet, return empty array
+            return [];
+        }
+
+        // Extract unique organizations and categories
+        const organizations = [...new Set(userEvents.map(e => e["hosting organization"]).filter(org => org !== null && org !== ""))];
+        const categories = [...new Set(userEvents.map(e => e.category).filter(cat => cat !== null && cat !== ""))];
+
+        if (organizations.length === 0 && categories.length === 0) {
+            return [];
+        }
+
+        // Get current date for filtering future events
+        const currentDate = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+
+        // Fetch all future events, then filter by organization or category
+        const { data: allFutureEvents, error: eventsError } = await supabaseClient
+            .from(EVENTS_TABLE)
+            .select("id, title, description, start_time, location, category, \"hosting organization\"")
+            .gte("start_time", currentDate);
+
+        if (eventsError) {
+            console.error("Error fetching future events:", eventsError);
+            return [];
+        }
+
+        if (!allFutureEvents || allFutureEvents.length === 0) {
+            return [];
+        }
+
+        // Filter events that match organization OR category
+        const recommendedEvents = allFutureEvents.filter(event => {
+            const matchesOrg = organizations.length > 0 && 
+                              event["hosting organization"] && 
+                              organizations.includes(event["hosting organization"]);
+            const matchesCat = categories.length > 0 && 
+                              event.category && 
+                              categories.includes(event.category);
+            return matchesOrg || matchesCat;
+        });
+
+        // Remove duplicates and get user's existing RSVPs to exclude
+        const { data: userRSVPs, error: rsvpError } = await supabaseClient
+            .from(RSVPS_TABLE)
+            .select("event_id")
+            .eq("user_email", userEmail);
+
+        const userRSVPIds = new Set();
+        if (!rsvpError && userRSVPs) {
+            userRSVPs.forEach(rsvp => {
+                if (rsvp.event_id) {
+                    userRSVPIds.add(rsvp.event_id);
+                }
+            });
+        }
+
+        // Remove duplicates and events user already RSVP'd to
+        const uniqueEvents = [];
+        const seenIds = new Set();
+        
+        recommendedEvents.forEach(event => {
+            if (!seenIds.has(event.id) && !userRSVPIds.has(event.id)) {
+                seenIds.add(event.id);
+                uniqueEvents.push(event);
+            }
+        });
+
+        return uniqueEvents;
+    } catch (err) {
+        console.error("Unexpected error fetching recommended events:", err);
+        return [];
+    }
+}
+
+// Display recommended events
+function displayRecommendedEvents(events) {
+    const container = document.getElementById("recommendedEvents");
+    if (!container) return;
+
+    if (events.length === 0) {
+        container.innerHTML = '<p>No recommendations available at this time.</p>';
+        return;
+    }
+
+    let html = '';
+    events.forEach(event => {
+        const title = event.title || 'Untitled Event';
+        const description = event.description || '';
+        const startTime = event.start_time ? new Date(event.start_time).toLocaleDateString() : 'TBD';
+        const location = event.location || 'Location TBD';
+        const category = event.category || 'Uncategorized';
+        const organization = event["hosting organization"] || 'Unknown Organization';
+
+        html += `
+            <div class="event-card">
+                <h3>${title}</h3>
+                <p><strong>Organization:</strong> ${organization}</p>
+                <p><strong>Category:</strong> ${category}</p>
+                <p><strong>Date:</strong> ${startTime}</p>
+                <p><strong>Location:</strong> ${location}</p>
+                ${description ? `<p>${description}</p>` : ''}
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+// Load and display recommended events
+async function loadRecommendedEvents() {
+    // Check for session first
+    if (!checkSession()) {
+        return;
+    }
+
+    // Get user email from sessionStorage
+    const userDataStr = sessionStorage.getItem("userData");
+    const userData = JSON.parse(userDataStr);
+    const userEmail = userData.email;
+
+    // Fetch recommended events
+    const recommendedEvents = await fetchRecommendedEvents(userEmail);
+    
+    // Display recommended events
+    displayRecommendedEvents(recommendedEvents);
+}
+
+    // Initialize on page load
 window.addEventListener("DOMContentLoaded", () => {
     // Ensure mainContent is visible (in case it was hidden)
     const mainContent = document.getElementById("mainContent");
@@ -189,5 +370,10 @@ window.addEventListener("DOMContentLoaded", () => {
     
     // Load and display user's RSVPs
     loadUserRSVPs();
+    
+    // Load and display recommended events
+    loadRecommendedEvents();
 });
+
+
 
